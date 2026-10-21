@@ -73,3 +73,10 @@ Registrar por execução: `milestone`, `commit_sha`, `upstream_sha`, `runtime`, 
 - Novo: [skeleton/README.md](skeleton/README.md), [contracts.mjs](skeleton/contracts.mjs), [host.mjs](skeleton/host.mjs), adaptadores de referência e journal em memória, seis testes em [skeleton/test/skeleton.test.mjs](skeleton/test/skeleton.test.mjs).
 - Trata-se de **contrato de integração preliminar** com adaptador para referência simulada, não de substituição ou escolha de um motor upstream. Falta executar os seis testes na instalação do usuário/CI; **não declarar PASS** antes disso.
 - O journal não é persistente; nenhuma garantia de sandbox, recuperação, multiagente ou benchmarks entre donors. Sem modificações em `main`, sem PR ou merge adicional. M1–M5 continuam **0/5 aceitos**.
+
+## CORE-BENCH-001 — protocolo científico e verificador de resultados
+
+- Protocolo: [docs/research/CORE-BENCH-001.md](docs/research/CORE-BENCH-001.md); ferramenta: [bench/verify-run.mjs](bench/verify-run.mjs); casos de teste: [bench/test/verify-run.test.mjs](bench/test/verify-run.test.mjs).
+- Documentadas fontes científicas de arquitetura, políticas de contexto, benchmark controlado e segurança; extração cuidadosa das limitações de inferência. Comparação B0–B4 **ainda não executada**.
+- Verificador apenas valida metadados de execuções; **não executa benchmark nem comprova autenticidade**. Seus próprios testes não foram executados neste ambiente nesta etapa; evitar declarar PASS.
+- **Sem seleção antecipada de donor, sem merge ou PR adicional. M1–M5 continuam 0/5 aceitos.**
