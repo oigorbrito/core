@@ -1,0 +1,36 @@
+name: CORE Orca actual loop benchmark offline
+on:
+  push:
+    branches: [feat/core-runtime-foundation-001]
+    paths: ['.github/workflows/core-orca-loop-criterion.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  orca-loop:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      OPENROUTER_API_KEY: ''
+      ANTHROPIC_API_KEY: ''
+      OPENAI_API_KEY: ''
+    steps:
+      - name: Fetch upstream and record revision
+        run: |
+          git clone --depth=1 https://github.com/okikorg/orca-harness.git orca
+          git -C orca rev-parse HEAD | tee orca-source-sha.txt
+      - name: Run actual full agent loop Criterion benchmark
+        run: |
+          cd orca
+          cargo bench --locked -p orca-harness-core --bench harness_loop -- --sample-size 10 | tee ../orca-loop-results.txt
+      - name: Preserve performance and source identity
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: core-orca-loop-criterion
+          path: |
+            orca-loop-results.txt
+            orca-source-sha.txt
+          if-no-files-found: warn
+      - name: Explicit comparison scope
+        run: echo 'Orca full loop only. NO numerical comparison against Pi until equivalent Pi fake-model contract is implemented.'
