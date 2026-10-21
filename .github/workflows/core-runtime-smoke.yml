@@ -1,0 +1,34 @@
+name: CORE runtime smoke Orca and Pi
+on:
+  push:
+    branches: [feat/core-runtime-foundation-001]
+    paths: ['.github/workflows/core-runtime-smoke.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  runtime-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Install and smoke Pi
+        run: |
+          npm install -g @earendil-works/pi-coding-agent@1.3.0 --ignore-scripts --no-audit --no-fund
+          command -v pi
+          pi --version
+          pi --help >/dev/null
+      - name: Build and smoke Orca
+        run: |
+          git clone --depth=1 https://github.com/okikorg/orca-harness.git /tmp/orca-harness
+          git -C /tmp/orca-harness rev-parse HEAD
+          cd /tmp/orca-harness
+          cargo build --release --locked -p orcacode
+          ./target/release/orcacode --help >/dev/null
+          python3 benchmarks/harness-comparison/run.py --help >/dev/null
+          python3 benchmarks/harness-comparison/analyze.py --help >/dev/null
