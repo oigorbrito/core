@@ -1,0 +1,82 @@
+name: CORE positional fault integrity
+on:
+  push:
+    branches: [feat/core-runtime-foundation-001]
+    paths: ['.github/workflows/core-positional-faults.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - run: |
+          set -euo pipefail
+          git clone --depth=1 https://github.com/okikorg/orca-harness.git /tmp/orca
+          git -C /tmp/orca rev-parse HEAD > orca-revision.txt
+          cp experiments/paired-offline/orca-fault-position.rs /tmp/orca/crates/harness-core/examples/core_fault_position.rs
+          (cd /tmp/orca && cargo build --locked --release -p orca-harness-core --example core_fault_position)
+          cp /tmp/orca/target/release/examples/core_fault_position .
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: positional-binary
+          path: |
+            core_fault_position
+            orca-revision.txt
+  position:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - case: first
+            index: 0
+          - case: middle
+            index: 7
+          - case: last
+            index: 15
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CORE_FANOUT: '16'
+      CORE_REPS: '30'
+      CORE_FAILURE_INDEX: ${{ matrix.index }}
+      OPENAI_API_KEY: ''
+      ANTHROPIC_API_KEY: ''
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: positional-binary
+          path: bin
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: npm install --prefix experiments/paired-offline --no-save --ignore-scripts --no-audit --no-fund @earendil-works/pi-agent-core@1.3.0 @earendil-works/pi-ai@1.3.0 typebox@1.3.27
+      - name: Validate Pi and Orca failure position and complete tool results
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x bin/core_fault_position
+          node experiments/paired-offline/pi-fault-position.mjs > pi.json
+          ./bin/core_fault_position > orca.json
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          idx=int(os.environ["CORE_FAILURE_INDEX"])
+          for name in ('pi','orca'):
+              x=json.loads(Path(name+'.json').read_text())
+              assert len(x['records'])==30
+              assert all(r['correct'] is True and r['observedError'] is True and r['failureIndex']==idx and r['executed']==16 and r['uniqueSources']==16 for r in x['records'])
+              print(json.dumps({'candidate':name,'failed_source':idx,'passed':30}))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: positional-${{ matrix.case }}
+          path: |
+            pi.json
+            orca.json
+          if-no-files-found: warn
