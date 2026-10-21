@@ -47,3 +47,10 @@ Registrar por execução: `milestone`, `commit_sha`, `upstream_sha`, `runtime`, 
 - Nenhum benchmark entre alternativas com capacidades diferentes será usado para proclamar vencedor.
 - Nenhum merge automático; revisões e merges dependem de autorização.
 - Abrir nova PR apenas para conjunto substantivo pronto, não por cronograma.
+
+## Atualização M1 — 2026-10-21 (implementação parcial, não validada)
+
+- Criados `experiments/engine-embed/workspace-tools.mjs` e `m1-workflow.mjs` com leitura UTF-8 limitada, criação exclusiva, edição de ocorrência única, verificação de paths e fluxo de ferramenta/modelo simulado. `npm run m1:workflow` foi configurado.
+- Reaproveita `@earendil-works/pi-agent-core@1.3.0` sem fork. Este incremento **não foi executado** nesta sessão; o PASS anterior refere-se somente a `npm run smoke`.
+- Limites de segurança: confinamento por paths e rejeição de links simbólicos não constituem sandbox do SO nem garantem ausência de TOCTOU. Não foi liberada ferramenta de shell arbitrário. Escrita da edição ainda não implementa CAS atômico.
+- Pendente para M1: execução do novo cenário, steering/follow-up/cancelamento, transporte real configurável, verificação e política de execução de comandos. **M1 permanece EM_IMPLEMENTAÇÃO e aceitação 0/5.**
