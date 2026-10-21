@@ -37,6 +37,22 @@ jobs:
           git -C /tmp/orca-harness rev-parse HEAD | tee /tmp/orca-source-sha.txt
           cd /tmp/orca-harness
           cargo build --release --locked -p orcacode
+      - name: Preflight OpenRouter credit availability
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request, urllib.error
+          req=urllib.request.Request('https://openrouter.ai/api/v1/credits',headers={'Authorization':'Bearer '+os.environ['OPENROUTER_API_KEY']})
+          try:
+              with urllib.request.urlopen(req,timeout=15) as resp: obj=json.load(resp)
+          except urllib.error.HTTPError as exc:
+              raise SystemExit(f'Credit preflight HTTP {exc.code}; benchmark blocked without model calls')
+          data=obj.get('data',{})
+          balance=float(data.get('total_credits',0))-float(data.get('total_usage',0))
+          print(f'OpenRouter remaining credit (USD): {balance:.4f}')
+          if balance < 0.10:
+              raise SystemExit('Insufficient OpenRouter credits for paired benchmark; add credits before retrying')
+          PY
       - name: Execute exactly one paired edit task
         shell: bash
         run: |
