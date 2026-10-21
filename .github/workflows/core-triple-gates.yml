@@ -1,0 +1,99 @@
+name: CORE triple independent gates
+on:
+  push:
+    branches: [feat/core-runtime-foundation-001]
+    paths:
+      - '.github/workflows/core-triple-gates.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-fixtures:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Compile Orca once and record upstream revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth=1 https://github.com/okikorg/orca-harness.git /tmp/orca-benchmark
+          git -C /tmp/orca-benchmark rev-parse HEAD > orca-revision.txt
+          mkdir -p /tmp/orca-benchmark/crates/harness-core/examples
+          cp experiments/paired-offline/orca-loop.rs /tmp/orca-benchmark/crates/harness-core/examples/core_paired.rs
+          (cd /tmp/orca-benchmark && cargo build --release --locked -p orca-harness-core --example core_paired)
+          cp /tmp/orca-benchmark/target/release/examples/core_paired ./core_paired
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: core-triple-binaries
+          path: |
+            core_paired
+            orca-revision.txt
+          retention-days: 14
+  independent-gates:
+    needs: build-fixtures
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - fanout: 1
+            gate: serial-tool
+          - fanout: 4
+            gate: parallel-small
+          - fanout: 16
+            gate: parallel-large
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CORE_REPS: '30'
+      CORE_FANOUT: ${{ matrix.fanout }}
+      OPENAI_API_KEY: ''
+      ANTHROPIC_API_KEY: ''
+      OPENROUTER_API_KEY: ''
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Install pinned Pi packages
+        run: npm install --prefix experiments/paired-offline --no-save --ignore-scripts --no-audit --no-fund @earendil-works/pi-agent-core@1.3.0 @earendil-works/pi-ai@1.3.0 typebox@1.3.27
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: core-triple-binaries
+          path: ./bin
+      - name: Execute independent correctness and fault-recovery gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x ./bin/core_paired
+          mkdir -p evidence
+          for scenario in normal fault; do
+            if [[ "$scenario" == fault ]]; then export CORE_INJECT_FAILURE=1; else unset CORE_INJECT_FAILURE || true; fi
+            node experiments/paired-offline/pi-loop.mjs > "evidence/pi-${scenario}.json"
+            ./bin/core_paired > "evidence/orca-${scenario}.json"
+          done
+      - name: Independently verify traces and summarize latency
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,statistics,os
+          from pathlib import Path
+          fanout=int(os.environ["CORE_FANOUT"])
+          for scenario in ("normal","fault"):
+              for candidate in ("pi","orca"):
+                  obj=json.loads(Path(f"evidence/{candidate}-{scenario}.json").read_text())
+                  rows=obj["records"]
+                  assert len(rows)==30,(candidate,scenario,len(rows))
+                  assert all(x["fanout"]==fanout and x["turns"]==2 and x["executed"]==fanout and x["uniqueSources"]==fanout and x["correct"] is True for x in rows),(candidate,scenario)
+                  assert all(x["observedError"] is (scenario=="fault") for x in rows),(candidate,scenario,"error propagation")
+                  durations=[x["elapsed_ms"] for x in rows]
+                  print(json.dumps({"candidate":candidate,"scenario":scenario,"fanout":fanout,"passed":30,"median_ms":statistics.median(durations),"min_ms":min(durations),"max_ms":max(durations)}))
+          PY
+      - name: Upload independent evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: core-triple-${{ matrix.gate }}
+          path: evidence/
+          if-no-files-found: warn
+          retention-days: 14
