@@ -42,7 +42,7 @@ async fn main(){
   }else{false};
   if inject {assert!(observed_error,"tool failure not visible to next model call");}
   let observed_contexts=model.observed_contexts();
-  let context_bytes:usize=observed_contexts.iter().map(|ctx|serde_json::to_vec(ctx).expect("serialize context").len()).sum();
+  let context_bytes:usize=observed_contexts.iter().map(|ctx|serde_json::to_vec(ctx.messages()).expect("serialize messages").len()).sum();
   let context_messages:usize=observed_contexts.iter().map(|ctx|ctx.messages().len()).sum();
   assert_eq!(observed_contexts.len(),2,"model invocation mismatch");
   let unique=seen.lock().unwrap().len();
