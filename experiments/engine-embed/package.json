@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "smoke": "node smoke.mjs"
+    "smoke": "node smoke.mjs",
+    "m1:workflow": "node m1-workflow.mjs"
   },
   "dependencies": {
     "@earendil-works/pi-agent-core": "1.3.0",
