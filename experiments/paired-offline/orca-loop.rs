@@ -39,7 +39,7 @@ async fn main(){
   assert_eq!(count.load(Ordering::SeqCst),fanout,"tool executions mismatch");
   let _=result;
   let observed_error=if inject {
-   model.observed_contexts().iter().any(|ctx|ctx.messages.iter().any(|m|matches!(m,Message::Tool{results} if results.iter().any(|r|r.is_error && r.output.to_string().contains("injected-tool-failure")))))
+   model.observed_contexts().iter().any(|ctx|ctx.messages().iter().any(|m|matches!(m,Message::Tool{results} if results.iter().any(|r|r.is_error && r.output.to_string().contains("injected-tool-failure")))))
   }else{false};
   if inject {assert!(observed_error,"tool failure not visible to next model call");}
   let unique=seen.lock().unwrap().len();
