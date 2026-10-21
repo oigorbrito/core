@@ -49,6 +49,15 @@ jobs:
             --output "${GITHUB_WORKSPACE}/paired-results" \
             --orca-bin /tmp/orca-harness/target/release/orcacode
           python3 benchmarks/harness-comparison/analyze.py "${GITHUB_WORKSPACE}/paired-results"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          rows = json.loads((Path(os.environ['GITHUB_WORKSPACE']) / 'paired-results/runs.json').read_text())
+          assert len(rows) == 2 and {r['harness'] for r in rows} == {'orca','pi'}, 'missing comparison rows'
+          for r in rows:
+              assert (r.get('total_tokens') or 0) > 0 and (r.get('turns') or 0) > 0, f"Invalid zero-model-call run: {r['harness']}"
+          print('Both harnesses produced measurable model activity.')
+          PY
       - name: Save manifest and audit metadata
         if: always()
         shell: bash
