@@ -22,7 +22,7 @@ jobs:
         with:
           node-version: '22'
       - name: Install pinned Pi embedded core dependencies
-        run: npm install --prefix experiments/engine-embed --ignore-scripts --no-audit --no-fund
+        run: npm install --prefix experiments/paired-offline --no-save --ignore-scripts --no-audit --no-fund @earendil-works/pi-agent-core@1.3.0 @earendil-works/pi-ai@1.3.0 typebox@1.3.27
       - name: Clone Orca and compile dedicated benchmark fixture
         shell: bash
         run: |
