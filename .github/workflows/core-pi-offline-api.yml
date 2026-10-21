@@ -1,0 +1,46 @@
+name: CORE Pi offline API contract
+on:
+  push:
+    branches: [feat/core-runtime-foundation-001]
+    paths: ['.github/workflows/core-pi-offline-api.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pi-core-api:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Install Pi agent-core without invoking a model
+        run: |
+          mkdir -p /tmp/pi-core-offline
+          cd /tmp/pi-core-offline
+          npm init -y >/dev/null
+          npm install @mariozechner/pi-agent-core --ignore-scripts --no-audit --no-fund
+      - name: Inspect public module and instantiate local agent
+        run: |
+          cd /tmp/pi-core-offline
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import * as core from '@mariozechner/pi-agent-core';
+          console.log('Public exports:',Object.keys(core).sort().join(', '));
+          assert.equal(typeof core.Agent,'function','Missing public Agent constructor');
+          const agent = new core.Agent();
+          assert.ok(agent);
+          console.log('PI_CORE_OFFLINE_CONTRACT_PASS: instantiated without API or model request');
+          JS
+      - name: Record pinned installed package identity
+        run: |
+          cd /tmp/pi-core-offline
+          npm ls @mariozechner/pi-agent-core --json > "$GITHUB_WORKSPACE/pi-package-tree.json"
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: core-pi-offline-contract
+          path: pi-package-tree.json
+          if-no-files-found: warn
