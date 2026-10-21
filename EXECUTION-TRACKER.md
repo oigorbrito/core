@@ -98,3 +98,10 @@ Registrar por execução: `milestone`, `commit_sha`, `upstream_sha`, `runtime`, 
 - [Contrato de desempenho e política antialucinação](CORE-PERFORMANCE-CONTRACT-001.md): superar Pi como baseline de eficiência **sem regressões relevantes** de correção, segurança ou confiabilidade; Pi é comparador, não arquitetura obrigatória.
 - A meta está em estado `PROPOSTO`, não demonstrada. Aplicar métricas, comparabilidade, dados brutos, repetições e critérios pré-registrados antes de qualquer afirmação de superioridade.
 - Sem benchmarks próprios comparáveis concluídos; M1–M5 continuam **0/5 aceitos**.
+
+## CORE-OPT-001 — Instrumentação de contexto implementada (não homologada)
+
+- Fonte: [optimizations/context/instrument-model.mjs](optimizations/context/instrument-model.mjs); [cinco testes](optimizations/context/test/instrument-model.test.mjs).
+- Wrapper para contrato `model.next(request)`: preserva parâmetros e retorno, reporta duração, bytes do histórico e das ferramentas, tokens e cache **apenas quando provedor informa**; não armazena conteúdo de prompts/argumentos. Falhas de telemetria não interrompem o modelo.
+- **Não é adaptador dos streams reais de todos os donors**, não calcula tokens de dados em bytes, não otimiza ainda schemas/contexto, nem prova melhora. Nenhuma chamada real de provedor, benchmark A/B ou execução de teste ocorreu nesta etapa (sem acesso de execução ao clone via ambiente atual). Cinco testes criados, **não aprovados**.
+- Próxima evidência: testar `node --test optimizations/context/test/instrument-model.test.mjs` e instrumentar um modelo real por API pública antes de ablação. M1–M5 continuam 0/5.
