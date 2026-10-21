@@ -1,0 +1,47 @@
+name: CORE Pi independent host-budget gate
+on:
+  push:
+    branches: [feat/core-runtime-foundation-001]
+    paths:
+      - '.github/workflows/core-pi-host-budget-independent.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pi-host-budget:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CORE_SCENARIO: 'host-budget'
+      CORE_GATE_SCENARIO: 'recovery'
+      OPENAI_API_KEY: ''
+      ANTHROPIC_API_KEY: ''
+      OPENROUTER_API_KEY: ''
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Install exact Pi fixture dependencies
+        run: npm install --prefix experiments/paired-offline --no-save --ignore-scripts --no-audit --no-fund @earendil-works/pi-agent-core@1.3.0 @earendil-works/pi-ai@1.3.0 typebox@1.3.27
+      - name: Execute independent scenario
+        shell: bash
+        run: |
+          set -euo pipefail
+          node experiments/paired-offline/pi-stop-contract.mjs > evidence.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          j=json.loads(Path('evidence.json').read_text())
+          assert j['scenario']=='host-budget'
+          assert len(j['records'])==10
+          assert all(x['correct'] is True for x in j['records'])
+          print(json.dumps({'scenario':'host-budget','passed':10,'agent':'pi'}))
+          PY
+      - name: Upload verification evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: pi-host-budget-evidence
+          path: evidence.json
+          if-no-files-found: warn
