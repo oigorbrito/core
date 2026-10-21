@@ -13,7 +13,7 @@ for(let i=0;i<repetitions;i++){
  const agent=new Agent({initialState:{systemPrompt:"You are a concurrent fetcher.",tools:[tool]},toolExecution:"parallel",streamFn:(_model,context)=>{
    const stream=createAssistantMessageEventStream();
    const round=turns++;
-   contextBytes+=Buffer.byteLength(JSON.stringify(context),"utf8");
+   contextBytes+=Buffer.byteLength(JSON.stringify(context.messages||[]),"utf8");
    contextMessages+=(context.messages||[]).length;
    if(inject && round===1) observedError=JSON.stringify(context).includes("injected-tool-failure");
    queueMicrotask(()=>{
