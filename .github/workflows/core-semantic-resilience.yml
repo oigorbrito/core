@@ -1,0 +1,89 @@
+name: CORE three semantic resilience gates
+on:
+  push:
+    branches: [feat/core-runtime-foundation-001]
+    paths: ['.github/workflows/core-semantic-resilience.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Compile dedicated Orca resilience fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth=1 https://github.com/okikorg/orca-harness.git /tmp/orca
+          git -C /tmp/orca rev-parse HEAD > orca-revision.txt
+          cp experiments/paired-offline/orca-recovery.rs /tmp/orca/crates/harness-core/examples/core_resilience.rs
+          (cd /tmp/orca && cargo build --locked --release -p orca-harness-core --example core_resilience)
+          cp /tmp/orca/target/release/examples/core_resilience .
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: resilience-build
+          path: |
+            core_resilience
+            orca-revision.txt
+  verify:
+    needs: compile
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: [recovery, step-limit, cancel]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CORE_GATE_SCENARIO: ${{ matrix.scenario }}
+      OPENAI_API_KEY: ''
+      ANTHROPIC_API_KEY: ''
+      OPENROUTER_API_KEY: ''
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: resilience-build
+          path: bin
+      - name: Orca independent behavioral assertions
+        shell: bash
+        run: |
+          chmod +x bin/core_resilience
+          bin/core_resilience > orca.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path('orca.json').read_text())
+          assert x['scenario']=='${{ matrix.scenario }}'
+          assert len(x['records'])==10
+          assert all(r['correct'] is True for r in x['records'])
+          print(json.dumps({'candidate':'orca','scenario':x['scenario'],'validated':10}))
+          PY
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        if: matrix.scenario == 'recovery'
+        with:
+          node-version: '22'
+      - name: Pi corresponding recovery scenario
+        if: matrix.scenario == 'recovery'
+        shell: bash
+        run: |
+          npm install --prefix experiments/paired-offline --no-save --ignore-scripts --no-audit --no-fund @earendil-works/pi-agent-core@1.3.0 @earendil-works/pi-ai@1.3.0 typebox@1.3.27
+          node experiments/paired-offline/pi-recovery.mjs > pi.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path('pi.json').read_text())
+          assert x['scenario']=='recovery' and len(x['records'])==10
+          assert all(r['correct'] and r['executions']==2 and r['sawFailure'] and r['sawSuccess'] for r in x['records'])
+          print(json.dumps({'candidate':'pi','scenario':'recovery','validated':10}))
+          PY
+      - name: Preserve independent gate evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: core-resilience-${{ matrix.scenario }}
+          path: |
+            orca.json
+            pi.json
+          if-no-files-found: warn
