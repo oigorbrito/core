@@ -49,6 +49,12 @@ jobs:
               /tmp/orca-benchmark/target/release/examples/core_paired > "paired-evidence/orca-$n.json"
             fi
           done
+          export CORE_INJECT_FAILURE=1
+          for n in 1 4 16; do
+            export CORE_FANOUT="$n"
+            node experiments/paired-offline/pi-loop.mjs > "paired-evidence/pi-fault-$n.json"
+            /tmp/orca-benchmark/target/release/examples/core_paired > "paired-evidence/orca-fault-$n.json"
+          done
       - name: Validate correctness and summarize distributions
         run: |
           python3 - <<'PY'
@@ -65,6 +71,11 @@ jobs:
                   timings=[x['elapsed_ms'] for x in values]
                   assert all(t>=0 for t in timings)
                   rows[name]={'median_ms':round(statistics.median(timings),4),'min_ms':round(min(timings),4),'max_ms':round(max(timings),4)}
+              for name in ('pi','orca'):
+                  report=json.loads((root/f'{name}-fault-{n}.json').read_text())
+                  values=report['records']
+                  assert len(values)==30,(name,n,'fault')
+                  assert all(x['turns']==2 and x['executed']==n and x['uniqueSources']==n and x['observedError'] is True and x['correct'] is True for x in values),(name,n,'failure propagation')
               print(json.dumps({'fanout':n,'results':rows,'note':'Equal scripted behavior; runtimes and implementations differ; no quality/tokens comparison'}))
           PY
       - name: Preserve provenance and raw results
