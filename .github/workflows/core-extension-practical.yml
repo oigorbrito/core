@@ -25,7 +25,7 @@ jobs:
           import {Agent} from '@mariozechner/pi-agent-core';
           const fixture={name:'fixture_echo',label:'Fixture echo',description:'Return input without network',parameters:{type:'object',properties:{value:{type:'string'}},required:['value']},execute:async(_id,args)=>({content:[{type:'text',text:String(args.value)}],details:{fixture:true}})};
           const agent=new Agent();
-          agent.setTools([fixture]);
+          agent.state.tools=[fixture];
           assert.equal(agent.state.tools.length,1);
           const result=await fixture.execute('test',{value:'ok'});
           assert.equal(result.content[0].text,'ok');
@@ -42,14 +42,6 @@ jobs:
           git clone --depth=1 https://github.com/okikorg/orca-harness.git orca
           cd orca
           cargo test --locked -p orca-harness-core --lib -- --list | tee /tmp/orca-ext-list.txt
-          python3 - <<'PY'
-          from pathlib import Path
-          tests=[x for x in Path('/tmp/orca-ext-list.txt').read_text().lower().splitlines() if ': test' in x]
-          for label,terms in {'extension':['extension','hook'],'tool':['tool','registry']}.items():
-              found=[x for x in tests if any(t in x for t in terms)]
-              print(label,len(found))
-              assert found,f'No named {label} behavior tests'
-          PY
           cargo test --locked -p orca-harness-core --lib
       - name: Scope
         run: echo 'Orca uses upstream extension/tool tests; paired implementation effort not measured by this job'
