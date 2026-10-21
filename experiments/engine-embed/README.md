@@ -23,3 +23,17 @@ This is an **executable probe, not proof of successful execution** until run and
 It does not validate persistence, crash recovery, concurrent tools, steering, sandbox boundaries or unknown external effects; it cannot justify selecting Pi as winner. Investigate corresponding public APIs of OpenHands SDK, Codex, OpenCode, Deep Agents, Mastra, and Mistral Vibe before comparison. Keep exact source SHAs and runnable evidence.
 
 Next substantive gate: run the smoke in an isolated checkout, fix API mismatches only if demonstrated, preserve upstream semantics and compare equivalent integration contracts against other candidates; report pass/fail and raw logs. No merge authorization.
+
+## Additional workspace regression suite (2026-10-21)
+
+Run after dependencies are installed:
+
+```sh
+node --test workspace-tools.test.mjs
+npm run smoke
+npm run m1:workflow
+```
+
+The regression suite tests traversal/absolute paths, symlink-based escapes, exclusive creates, ambiguous edits, and read-size denial. The repository currently lacks a committed `package-lock.json` for this experiment. Consequently a fresh `npm install` is **not** a fully locked/reproducible dependency resolution. Resolve this before treating runs as a release gate.
+
+**Not validated in CI or on the owner's Windows host as part of this commit.** No shell, OS sandbox, durable journal, crash recovery, tool-effect reconciliation or real-provider lifecycle is proved by these checks. The historical custom runtime in `packages/core-runtime/` is frozen as an exploratory reference and is not the selected engine.
