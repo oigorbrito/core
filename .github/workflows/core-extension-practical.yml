@@ -1,0 +1,55 @@
+name: CORE practical extension offline
+on:
+  push:
+    branches: [feat/core-runtime-foundation-001]
+    paths: ['.github/workflows/core-extension-practical.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pi-extension:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Register custom tool and subscribe without model
+        run: |
+          mkdir /tmp/pi-ext && cd /tmp/pi-ext
+          npm init -y >/dev/null
+          npm install --save-exact @mariozechner/pi-agent-core --ignore-scripts --no-audit --no-fund
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {Agent} from '@mariozechner/pi-agent-core';
+          const fixture={name:'fixture_echo',label:'Fixture echo',description:'Return input without network',parameters:{type:'object',properties:{value:{type:'string'}},required:['value']},execute:async(_id,args)=>({content:[{type:'text',text:String(args.value)}],details:{fixture:true}})};
+          const agent=new Agent();
+          agent.setTools([fixture]);
+          assert.equal(agent.state.tools.length,1);
+          const result=await fixture.execute('test',{value:'ok'});
+          assert.equal(result.content[0].text,'ok');
+          const off=agent.subscribe(()=>{});
+          off();
+          console.log('PI_EXTENSION_PASS custom tool registration and observation; no LLM');
+          JS
+  orca-extension:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Clone source and exercise extension + tool API tests
+        run: |
+          git clone --depth=1 https://github.com/okikorg/orca-harness.git orca
+          cd orca
+          cargo test --locked -p orca-harness-core --lib -- --list | tee /tmp/orca-ext-list.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          tests=[x for x in Path('/tmp/orca-ext-list.txt').read_text().lower().splitlines() if ': test' in x]
+          for label,terms in {'extension':['extension','hook'],'tool':['tool','registry']}.items():
+              found=[x for x in tests if any(t in x for t in terms)]
+              print(label,len(found))
+              assert found,f'No named {label} behavior tests'
+          PY
+          cargo test --locked -p orca-harness-core --lib
+      - name: Scope
+        run: echo 'Orca uses upstream extension/tool tests; paired implementation effort not measured by this job'
