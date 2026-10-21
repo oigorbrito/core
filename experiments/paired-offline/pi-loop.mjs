@@ -7,8 +7,8 @@ const fanout=Number(process.env.CORE_FANOUT||4), repetitions=Number(process.env.
 const records=[];
 const usage={input:0,output:0,cacheRead:0,cacheWrite:0,totalTokens:0,cost:{input:0,output:0,cacheRead:0,cacheWrite:0,total:0}};
 for(let i=0;i<repetitions;i++){
- let turns=0, executed=0;
- const tool={name:"fetch",label:"fetch",description:"Return a fixed value",parameters:Type.Object({source:Type.Number()}),execute:async()=>{executed++;return {content:[{type:"text",text:"null"}],details:{}}}};
+ let turns=0, executed=0; const seen=new Set();
+ const tool={name:"fetch",label:"fetch",description:"Return a fixed value",parameters:Type.Object({source:Type.Number()}),execute:async(_id,args)=>{executed++; assert.ok(Number.isInteger(args.source)); assert.ok(args.source>=0 && args.source<fanout); assert.ok(!seen.has(args.source), 'duplicate source'); seen.add(args.source); return {content:[{type:"text",text:"null"}],details:{}}}};
  const agent=new Agent({initialState:{systemPrompt:"You are a concurrent fetcher.",tools:[tool]},toolExecution:"parallel",streamFn:()=>{
    const stream=createAssistantMessageEventStream();
    const round=turns++;
@@ -23,8 +23,8 @@ for(let i=0;i<repetitions;i++){
  await agent.prompt(`fetch ${fanout} sources`);
  await agent.waitForIdle();
  const elapsed_ms=performance.now()-start;
- assert.equal(turns,2);assert.equal(executed,fanout);
+ assert.equal(turns,2);assert.equal(executed,fanout); assert.equal(seen.size,fanout);
  assert.equal(agent.state.messages.filter(x=>x.role==="assistant").at(-1)?.stopReason,"stop");
- records.push({candidate:"pi",iteration:i+1,fanout,elapsed_ms,turns,executed});
+ records.push({candidate:"pi",iteration:i+1,fanout,elapsed_ms,turns,executed,uniqueSources:seen.size,correct:true});
 }
 console.log(JSON.stringify({candidate:"pi",fanout,repetitions,records}));
