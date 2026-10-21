@@ -4,13 +4,14 @@ on:
     branches: [feat/core-runtime-foundation-001]
     paths:
       - '.github/workflows/core-pi-host-budget-independent.yml'
+      - 'experiments/paired-offline/pi-stop-contract.mjs'
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
   pi-host-budget:
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 3
     env:
       CORE_SCENARIO: 'host-budget'
       CORE_GATE_SCENARIO: 'recovery'
