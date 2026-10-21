@@ -1,0 +1,52 @@
+name: CORE offline deterministic regression
+on:
+  push:
+    branches: [feat/core-runtime-foundation-001]
+    paths: ['.github/workflows/core-offline-regression.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Clone Orca source
+        run: |
+          git clone --depth=1 https://github.com/okikorg/orca-harness.git orca
+          git -C orca rev-parse HEAD | tee orca-sha.txt
+      - name: Run Orca harness core unit tests with no network model calls
+        run: |
+          cd orca
+          cargo test --locked -p orca-harness-core --lib
+      - name: Verify benchmark fixture deterministically
+        run: |
+          python3 - <<'PY'
+          import importlib.util,json,tempfile
+          from pathlib import Path
+          root=Path('orca/benchmarks/harness-comparison')
+          spec=importlib.util.spec_from_file_location('orca_benchmark_runner',root/'run.py')
+          module=importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+          tasks=module.load_tasks(root/'tasks.json','all',{'fix-retry-boundary'})
+          assert len(tasks)==1 and tasks[0]['mode']=='edit'
+          with tempfile.TemporaryDirectory() as tmp:
+              directory=Path(tmp)
+              source=root/'fixture'
+              import shutil
+              shutil.copytree(source,directory/'fixture')
+              workspace=directory/'fixture'
+              before=module.snapshot(workspace)
+              validation=module.validate_workspace(tasks[0],workspace,before)
+              assert not validation['passed'], 'Unmodified edit fixture must not count as repaired'
+              assert validation['errors'], 'Expected actionable verifier diagnostics'
+              print(json.dumps({'negative_control':'PASS','errors':validation['errors']},indent=2))
+          PY
+      - name: Upload source identity
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: core-offline-regression-evidence
+          path: orca-sha.txt
