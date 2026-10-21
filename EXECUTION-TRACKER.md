@@ -92,3 +92,9 @@ Registrar por execução: `milestone`, `commit_sha`, `upstream_sha`, `runtime`, 
 - Auditoria: [docs/research/CORE-EXTERNAL-AUDIT-002.md](docs/research/CORE-EXTERNAL-AUDIT-002.md). Arquivos de metodologia/resultados lidos e hashes de **blobs** identificados; nenhum SHA de commit dos benchmarks foi presumido.
 - Evidências mostram alteração de resultados por modelo/tarefa, calibragem de telemetria e restrições de amostra. **Não demonstram vencedor do core**.
 - Ainda pendentes: comparação tarefa↔JSON bruto↔ledger, commit exato e auditoria das superfícies de incorporação. B1/B2 suspensos; M1–M5 em 0/5.
+
+## Meta competitiva oficial — CORE-PERFORMANCE-CONTRACT-001
+
+- [Contrato de desempenho e política antialucinação](CORE-PERFORMANCE-CONTRACT-001.md): superar Pi como baseline de eficiência **sem regressões relevantes** de correção, segurança ou confiabilidade; Pi é comparador, não arquitetura obrigatória.
+- A meta está em estado `PROPOSTO`, não demonstrada. Aplicar métricas, comparabilidade, dados brutos, repetições e critérios pré-registrados antes de qualquer afirmação de superioridade.
+- Sem benchmarks próprios comparáveis concluídos; M1–M5 continuam **0/5 aceitos**.
