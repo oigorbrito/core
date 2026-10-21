@@ -54,3 +54,9 @@ Registrar por execução: `milestone`, `commit_sha`, `upstream_sha`, `runtime`, 
 - Reaproveita `@earendil-works/pi-agent-core@1.3.0` sem fork. Este incremento **não foi executado** nesta sessão; o PASS anterior refere-se somente a `npm run smoke`.
 - Limites de segurança: confinamento por paths e rejeição de links simbólicos não constituem sandbox do SO nem garantem ausência de TOCTOU. Não foi liberada ferramenta de shell arbitrário. Escrita da edição ainda não implementa CAS atômico.
 - Pendente para M1: execução do novo cenário, steering/follow-up/cancelamento, transporte real configurável, verificação e política de execução de comandos. **M1 permanece EM_IMPLEMENTAÇÃO e aceitação 0/5.**
+
+## Pesquisa de donors — referências canônicas
+
+- [Catálogo dos 7 subsistemas, 29 padrões e cinco donors clonáveis](docs/research/core-donors-29-pattern-coverage.md).
+- [Inventário primário dos 29 padrões](docs/research/harness-study-29-patterns.md).
+- **Pesquisa documentada não constitui M1–M5 aceito**; manter a linha de base funcional 0/5 e não interpretar candidatos como padrões verificados.
