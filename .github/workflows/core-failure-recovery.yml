@@ -1,0 +1,51 @@
+name: CORE recovery fault controls offline
+on:
+  push:
+    branches: [feat/core-runtime-foundation-001]
+    paths: ['.github/workflows/core-failure-recovery.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pi-fault-boundary:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Exercise independent tool failure and state reset
+        run: |
+          mkdir /tmp/pi-fault && cd /tmp/pi-fault
+          npm init -y >/dev/null
+          npm install --save-exact @mariozechner/pi-agent-core --ignore-scripts --no-audit --no-fund
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {Agent} from '@mariozechner/pi-agent-core';
+          const agent=new Agent();
+          let failures=0;
+          const tool={name:'fault',label:'Fault',description:'local deterministic error',parameters:{type:'object',properties:{}},execute:async()=>{failures++;throw new Error('fixture-failure')}};
+          agent.setTools([tool]);
+          await assert.rejects(tool.execute('fault',{}),/fixture-failure/);
+          assert.equal(failures,1);
+          agent.reset();
+          assert.ok(agent.state);
+          console.log('PI_FAULT_FIXTURE_PASS');
+          JS
+  orca-fault-boundary:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Clone and test model / tool fault handlers
+        run: |
+          git clone --depth=1 https://github.com/okikorg/orca-harness.git orca
+          cd orca
+          cargo test --locked -p orca-harness-core --lib -- --list | tee /tmp/orca-fault-tests.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          cases=[s for s in Path('/tmp/orca-fault-tests.txt').read_text().lower().splitlines() if ': test' in s and any(x in s for x in ['fail','error','cancel','limit'])]
+          print('fault cases',len(cases))
+          assert cases,'No named fault case found'
+          PY
+          cargo test --locked -p orca-harness-core --lib
