@@ -1,0 +1,52 @@
+name: CORE Pi Orca offline process overhead
+on:
+  push:
+    branches: [feat/core-runtime-foundation-001]
+    paths: ['.github/workflows/core-overhead-offline.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  overhead:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Install and compile candidates
+        run: |
+          npm install -g @earendil-works/pi-coding-agent@1.3.0 --ignore-scripts --no-audit --no-fund
+          git clone --depth=1 https://github.com/okikorg/orca-harness.git /tmp/orca-harness
+          git -C /tmp/orca-harness rev-parse HEAD
+          cd /tmp/orca-harness
+          cargo build --release --locked -p orcacode
+      - name: Measure cold processes and resident peaks without model requests
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, shutil, statistics, subprocess, time
+          cmds={'pi':[shutil.which('pi'),'--help'],'orca':['/tmp/orca-harness/target/release/orcacode','--help']}
+          assert all(cmd[0] for cmd in cmds.values())
+          records=[]
+          for repeat in range(10):
+              for name in (('pi','orca') if repeat%2==0 else ('orca','pi')):
+                  command=cmds[name]
+                  started=time.perf_counter_ns()
+                  p=subprocess.run(['/usr/bin/time','-f','PEAK_KB=%M',*command],capture_output=True,text=True,timeout=20)
+                  ms=(time.perf_counter_ns()-started)/1e6
+                  peak=int(next(line.split('=')[1] for line in p.stderr.splitlines() if line.startswith('PEAK_KB=')))
+                  assert p.returncode==0,(name,p.stderr[-1000:])
+                  records.append({'candidate':name,'repetition':repeat+1,'startup_help_wall_ms':round(ms,3),'peak_rss_kb':peak,'exit_code':p.returncode})
+          pathlib.Path('overhead.json').write_text(json.dumps({'method':'CLI --help, no inference, 10 alternating repetitions, same runner; not core-only','runs':records},indent=2))
+          for name in cmds:
+              rows=[r for r in records if r['candidate']==name]
+              print(f"{name}: median_help_wall_ms={statistics.median(r['startup_help_wall_ms'] for r in rows):.3f}; median_peak_rss_kb={statistics.median(r['peak_rss_kb'] for r in rows):.0f}")
+          PY
+      - name: Upload measurements
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: core-pi-orca-overhead
+          path: overhead.json
+          if-no-files-found: warn
