@@ -4,8 +4,7 @@ use std::time::Instant;
 use serde_json::{json,Value};
 use orca_harness_core::testing::{ScriptedModel,call};
 use orca_harness_core::{Agent,FnTool,Limits};
-use orca_harness_core::error::ToolError;
-use orca_harness_core::context::Message;
+use orca_harness_core::{ToolError,Message};
 
 #[tokio::main]
 async fn main(){
