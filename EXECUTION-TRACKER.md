@@ -80,3 +80,9 @@ Registrar por execução: `milestone`, `commit_sha`, `upstream_sha`, `runtime`, 
 - Documentadas fontes científicas de arquitetura, políticas de contexto, benchmark controlado e segurança; extração cuidadosa das limitações de inferência. Comparação B0–B4 **ainda não executada**.
 - Verificador apenas valida metadados de execuções; **não executa benchmark nem comprova autenticidade**. Seus próprios testes não foram executados neste ambiente nesta etapa; evitar declarar PASS.
 - **Sem seleção antecipada de donor, sem merge ou PR adicional. M1–M5 continuam 0/5 aceitos.**
+
+## Decisão de sequência — pesquisa externa antes dos testes novos
+
+- Auditoria inicial: [CORE-EXTERNAL-BENCH-001](docs/research/CORE-EXTERNAL-BENCH-001.md).
+- Há comparações same-model publicadas e Harness-Bench com harnesses candidatos. **Suspender novos B1/B2** até examinar artefatos brutos, versões e equivalência dos protocolos; evitar duplicar ensaios existentes.
+- Resultados externos são `PUBLICADO_TERCEIRO`, não provas próprias nem benchmark de core isolado; nenhuma pontuação incorporada aos marcos M1–M5.
