@@ -1,0 +1,79 @@
+name: CORE paired deterministic loop offline
+on:
+  push:
+    branches: [feat/core-runtime-foundation-001]
+    paths:
+      - '.github/workflows/core-paired-deterministic-loop.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  paired:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      OPENAI_API_KEY: ''
+      ANTHROPIC_API_KEY: ''
+      OPENROUTER_API_KEY: ''
+      CORE_REPS: '30'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Install pinned Pi embedded core dependencies
+        run: npm install --prefix experiments/engine-embed --ignore-scripts --no-audit --no-fund
+      - name: Clone Orca and compile dedicated benchmark fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth=1 https://github.com/okikorg/orca-harness.git /tmp/orca-benchmark
+          git -C /tmp/orca-benchmark rev-parse HEAD | tee orca-revision.txt
+          mkdir -p /tmp/orca-benchmark/crates/harness-core/examples
+          cp experiments/paired-offline/orca-loop.rs /tmp/orca-benchmark/crates/harness-core/examples/core_paired.rs
+          (cd /tmp/orca-benchmark && cargo build --release --locked -p orca-harness-core --example core_paired)
+          printf '%s\n' '@earendil-works/pi-agent-core@1.3.0' > pi-package.txt
+      - name: Alternating paired loop trials; model requests are mocked
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p paired-evidence
+          for n in 1 4 16; do
+            export CORE_FANOUT="$n"
+            if (( n == 4 )); then
+              /tmp/orca-benchmark/target/release/examples/core_paired > "paired-evidence/orca-$n.json"
+              node experiments/paired-offline/pi-loop.mjs > "paired-evidence/pi-$n.json"
+            else
+              node experiments/paired-offline/pi-loop.mjs > "paired-evidence/pi-$n.json"
+              /tmp/orca-benchmark/target/release/examples/core_paired > "paired-evidence/orca-$n.json"
+            fi
+          done
+      - name: Validate correctness and summarize distributions
+        run: |
+          python3 - <<'PY'
+          import json,statistics
+          from pathlib import Path
+          root=Path('paired-evidence')
+          for n in (1,4,16):
+              rows={}
+              for name in ('pi','orca'):
+                  report=json.loads((root/f'{name}-{n}.json').read_text())
+                  values=report['records']
+                  assert len(values)==30,(name,n)
+                  assert all(x['turns']==2 and x['executed']==n and x['fanout']==n for x in values)
+                  timings=[x['elapsed_ms'] for x in values]
+                  assert all(t>=0 for t in timings)
+                  rows[name]={'median_ms':round(statistics.median(timings),4),'min_ms':round(min(timings),4),'max_ms':round(max(timings),4)}
+              print(json.dumps({'fanout':n,'results':rows,'note':'Equal scripted behavior; runtimes and implementations differ; no quality/tokens comparison'}))
+          PY
+      - name: Preserve provenance and raw results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: core-paired-deterministic-loop
+          path: |
+            paired-evidence/
+            orca-revision.txt
+            pi-package.txt
+          if-no-files-found: warn
+          retention-days: 30
