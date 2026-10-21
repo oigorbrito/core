@@ -1,0 +1,40 @@
+name: CORE benchmark protocol offline
+on:
+  push:
+    branches: [feat/core-runtime-foundation-001]
+    paths: ['.github/workflows/core-benchmark-protocol.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  protocol:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Fetch Orca benchmark reference
+        run: |
+          git clone --depth=1 https://github.com/okikorg/orca-harness.git orca
+          git -C orca rev-parse HEAD
+      - name: Validate selected task and both harness commands without model calls
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('orca/benchmarks/harness-comparison/tasks.json')
+          tasks=json.loads(p.read_text())['tasks']
+          selected=[t for t in tasks if t['id']=='fix-retry-boundary']
+          assert len(selected)==1
+          assert selected[0]['mode']=='edit'
+          assert selected[0]['checks']
+          print('Fixture task and workspace verifier: PASS')
+          PY
+          python3 orca/benchmarks/harness-comparison/run.py --harness both --task fix-retry-boundary --repetitions 1 --dry-run --output "$GITHUB_WORKSPACE/dry-run"
+      - name: Preserve protocol
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: core-benchmark-protocol-offline
+          path: dry-run/
+          if-no-files-found: warn
