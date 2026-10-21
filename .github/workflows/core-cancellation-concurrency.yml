@@ -1,0 +1,57 @@
+name: CORE cancellation concurrency offline
+on:
+  push:
+    branches: [feat/core-runtime-foundation-001]
+    paths: ['.github/workflows/core-cancellation-concurrency.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  orca-kernel:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Clone Orca
+        run: git clone --depth=1 https://github.com/okikorg/orca-harness.git orca
+      - name: Exercise actual kernel tests
+        run: |
+          cd orca
+          cargo test --locked -p orca-harness-core --lib -- --list | tee /tmp/orca-tests.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          names=Path('/tmp/orca-tests.txt').read_text().lower()
+          for dimension,variants in {'cancellation':['cancel','abort'],'concurrency':['concurren','parallel','dispatcher'],'failures':['error','fail','timeout']}.items():
+              matches=[line for line in names.splitlines() if any(v in line for v in variants) and ': test' in line]
+              print(dimension,len(matches))
+              assert matches,f'No directly named {dimension} behavior test in kernel; cannot certify this dimension'
+          PY
+          cargo test --locked -p orca-harness-core --lib
+  pi-kernel:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Verify agent cancellation and event contract with no model
+        run: |
+          mkdir /tmp/pi-test && cd /tmp/pi-test
+          npm init -y >/dev/null
+          npm install --save-exact @mariozechner/pi-agent-core --ignore-scripts --no-audit --no-fund
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {Agent} from '@mariozechner/pi-agent-core';
+          const agent=new Agent();
+          const log=[];
+          const off=agent.subscribe(e=>log.push(e));
+          assert.equal(typeof off,'function');
+          assert.equal(typeof agent.abort,'function');
+          assert.equal(typeof agent.reset,'function');
+          await agent.abort();
+          agent.reset();
+          off();
+          console.log(JSON.stringify({cancel_api:'PASS',reset:'PASS',model_calls:0,event_count:log.length}));
+          JS
+      - name: Explicit scope declaration
+        run: echo 'Pi check is cancellation API smoke only; not adversarial concurrency equivalence'
