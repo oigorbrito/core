@@ -36,7 +36,7 @@ jobs:
           j=json.loads(Path('evidence.json').read_text())
           assert j['scenario']=='host-budget'
           assert len(j['records'])==10
-          assert all(x['correct'] is True for x in j['records'])
+          assert all(x['correct'] is True and x['abortObserved'] is False for x in j['records'])
           print(json.dumps({'scenario':'host-budget','passed':10,'agent':'pi'}))
           PY
       - name: Upload verification evidence
