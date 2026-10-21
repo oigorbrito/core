@@ -1,0 +1,66 @@
+name: CORE architecture and extensibility evidence
+on:
+  push:
+    branches: [feat/core-runtime-foundation-001]
+    paths: ['.github/workflows/core-architecture-extensibility.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  architecture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Fetch both upstream cores
+        run: |
+          git clone --depth=1 https://github.com/okikorg/orca-harness.git orca
+          git clone --depth=1 https://github.com/badlogic/pi-mono.git pi
+          git -C orca rev-parse HEAD
+          git -C pi rev-parse HEAD
+      - name: Reproducible architecture inventory
+        run: |
+          python3 - <<'PY'
+          import json,re
+          from pathlib import Path
+          specs=[('orca',Path('orca/crates/harness-core'),'.rs'),('pi',Path('pi/packages/agent'),'.ts')]
+          result={}
+          for name,root,suffix in specs:
+              assert root.is_dir(),f'{name} core missing'
+              files=[p for p in root.rglob('*') if p.is_file() and p.suffix==suffix]
+              assert files
+              text='\n'.join(p.read_text(encoding='utf-8',errors='replace') for p in files)
+              patterns=({'public_api':r'pub (?:struct|trait|enum|fn|mod|use)\b','traits_or_interfaces':r'\btrait\s+\w+','events':r'\bevent\b','cancellation':r'\bcancel|abort','errors':r'\bResult<|\bError\b'} if name=='orca' else {'public_api':r'\bexport\s+(?:class|function|interface|type|const|\{)','traits_or_interfaces':r'\binterface\s+\w+','events':r'\bevent\b','cancellation':r'\bcancel|abort','errors':r'\bthrow\b|\bError\b'})
+              result[name]={'scope':str(root),'files':len(files),'revision':None,'raw_token_occurrences':{k:len(re.findall(v,text,re.I)) for k,v in patterns.items()},'note':'Source inventory only: counts are NOT comparable capability or quality scores'}
+          Path('architecture-inventory.json').write_text(json.dumps(result,indent=2))
+          print(json.dumps(result,indent=2))
+          PY
+      - name: Pi extension public API smoke offline
+        run: |
+          mkdir /tmp/pi-extension && cd /tmp/pi-extension
+          npm init -y >/dev/null
+          npm install --save-exact @mariozechner/pi-agent-core --ignore-scripts --no-audit --no-fund
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { Agent } from '@mariozechner/pi-agent-core';
+          const agent=new Agent();
+          assert.equal(typeof agent.subscribe,'function');
+          const cancel=agent.subscribe(()=>{});
+          assert.equal(typeof cancel,'function');
+          cancel();
+          console.log('Pi observer extension point available offline');
+          JS
+      - name: Orca public interface tests offline
+        run: |
+          cd orca
+          cargo test --locked -p orca-harness-core --lib
+      - name: Preserve raw inventory
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: core-architecture-extensibility-evidence
+          path: architecture-inventory.json
+          if-no-files-found: warn
