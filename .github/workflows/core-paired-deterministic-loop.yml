@@ -4,6 +4,7 @@ on:
     branches: [feat/core-runtime-foundation-001]
     paths:
       - '.github/workflows/core-paired-deterministic-loop.yml'
+      - 'experiments/paired-offline/**'
   workflow_dispatch:
 permissions:
   contents: read
@@ -60,7 +61,7 @@ jobs:
                   report=json.loads((root/f'{name}-{n}.json').read_text())
                   values=report['records']
                   assert len(values)==30,(name,n)
-                  assert all(x['turns']==2 and x['executed']==n and x['fanout']==n for x in values)
+                  assert all(x['turns']==2 and x['executed']==n and x['uniqueSources']==n and x['correct'] is True and x['fanout']==n for x in values)
                   timings=[x['elapsed_ms'] for x in values]
                   assert all(t>=0 for t in timings)
                   rows[name]={'median_ms':round(statistics.median(timings),4),'min_ms':round(min(timings),4),'max_ms':round(max(timings),4)}
