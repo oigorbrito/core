@@ -1,0 +1,57 @@
+name: CORE chassis offline contracts
+on:
+  push:
+    branches: [feat/core-runtime-foundation-001]
+    paths: ['.github/workflows/core-chassis-offline.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pi-chassis:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Install Pi core and test local lifecycle contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir /tmp/pi-chassis && cd /tmp/pi-chassis
+          npm init -y >/dev/null
+          npm install --save-exact @mariozechner/pi-agent-core --ignore-scripts --no-audit --no-fund
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import * as core from '@mariozechner/pi-agent-core';
+          assert.equal(typeof core.Agent, 'function');
+          const agent=new core.Agent();
+          assert.ok(agent);
+          assert.equal(typeof agent.abort,'function');
+          assert.equal(typeof agent.reset,'function');
+          assert.equal(typeof agent.subscribe,'function');
+          let count=0;
+          const unsubscribe=agent.subscribe(()=>{count++});
+          assert.equal(typeof unsubscribe,'function');
+          unsubscribe();
+          agent.reset();
+          console.log('PI_CHASSIS_PASS lifecycle + observer + reset; no model requests');
+          JS
+          npm ls @mariozechner/pi-agent-core
+  orca-chassis:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Clone Orca
+        run: |
+          git clone --depth=1 https://github.com/okikorg/orca-harness.git orca
+          git -C orca rev-parse HEAD
+      - name: Test core dispatcher and lifecycle contracts offline
+        run: |
+          cd orca
+          cargo test --locked -p orca-harness-core --lib
+          cargo test --locked -p orca-harness-dag --lib
+      - name: Scope note
+        run: |
+          echo 'These are core/chassis unit and API smoke checks, not an equivalence or performance benchmark.'
