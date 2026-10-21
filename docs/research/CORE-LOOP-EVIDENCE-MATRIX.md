@@ -46,3 +46,7 @@ Comparar **somente Pi e OpenHands inicialmente**, no nível da chamada de `agent
 Critério: `PASS/FAIL/NOT_RUN` por semântica, custo de integração em linhas de adaptação e eventuais patches internos (objetivo zero), logs originais e SHA do donor. Benchmarks com LLM real são etapa separada para validar as conclusões funcionais, não pré-requisito para diagnóstico de loops.
 
 **Progresso:** este documento é auditoria de fontes; **nenhuma capacidade funcional do CORE foi aceita** e nenhum ensaio novo foi executado neste bloco. Nenhum merge ou refatoração.
+
+## Correção de governança — seleção sem incumbente (2026-10-21)
+
+**Orientação expressa do proprietário:** o Pi **não é candidato fixo nem baseline obrigatório**. Seu smoke PASS demonstra somente integração mínima no Windows e não concede preferência, entrada automática numa final ou dispensa de critérios comparativos. A referência a “comparar somente Pi e OpenHands inicialmente” acima é **substituída**: antes de executar benchmarks, aplicar uma triagem documental uniforme aos núcleos relevantes (incluindo OpenCode, Codex, Pi, OpenHands e outros identificados), com critérios e pesos definidos *antes* de ver resultados, e justificar exclusões por evidência. Só então escolher os experimentos de maior poder discriminante e menor custo, sem vencedores predefinidos. Registrar NOT_VERIFIED quando faltar informação, nunca reclassificar ausência de teste como inferioridade. Não reescrever ou incorporar um donor sem mérito comprovado.
