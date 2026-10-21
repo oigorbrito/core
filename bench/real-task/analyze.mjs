@@ -16,7 +16,7 @@ const records = files.map(f => {
   if (!['pi','orca'].includes(r.harness)) throw Error(`${f}: unknown harness`);
   if (typeof r.oracle_correct !== 'boolean') throw Error(`${f}: external oracle boolean required`);
   if (!Number.isFinite(r.wall_ms) || r.wall_ms < 0) throw Error(`${f}: invalid wall_ms`);
-  if (typeof r.endpoint !== 'string' || !/^https?:\\/\\/(localhost|127\\.0\\.0\\.1|\\[::1\\])(?::\\d+)?(?:\\/|$)/.test(r.endpoint)) throw Error(`${f}: nonlocal endpoint`);
+  if (typeof r.endpoint !== 'string' || !/^http:\/\/127[.]0[.]0[.]1(?::[0-9]+)?(?:\/|$)/.test(r.endpoint)) throw Error(`${f}: nonlocal endpoint`);
   if (!r.model_digest || !r.fixture_sha256 || !r.oracle_sha256) throw Error(`${f}: unidentified model/fixture/oracle`);
   return r;
 });
