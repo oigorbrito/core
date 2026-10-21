@@ -4,7 +4,8 @@ on:
     branches: [feat/core-runtime-foundation-001]
     paths:
       - '.github/workflows/core-paired-deterministic-loop.yml'
-      - 'experiments/paired-offline/**'
+      - 'experiments/paired-offline/pi-loop.mjs'
+      - 'experiments/paired-offline/orca-loop.rs'
   workflow_dispatch:
 permissions:
   contents: read
