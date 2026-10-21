@@ -21,3 +21,25 @@ Produzir dados de **tarefas reais de programação** pareadas de Pi 1.3.0 e Orca
 Registrar SHA de commit e donor, comando integral, runner, modelo/digest, versão Ollama, cada tarefa/oracle e resultado, contagem de tentativas, total de tokens de entrada/saída, duração por tentativa e custo de recursos por tarefa correta; rastros completos e checksums. Declarar `PILOT_INCONCLUSIVE` quando a evidência não sustentar seleção, ainda que um candidato tenha ganho local. Não usar métricas de loop simulado como custo de tarefa real.
 
 Este prompt já autoriza **implementar, testar, corrigir e repetir ensaios falhos quando justificável**; não precisa devolver o trabalho a cada passo.
+
+
+
+## Addendum — desbloqueio concreto após preflight local 3/3
+
+Relato do executor local: `gpt-oss:20b` passou 3/3 chamadas estruturadas; resultado não significa que Pi e Orca estejam pareados. Na próxima execução, **não repetir o preflight do modelo sem necessidade**.
+
+O repositório donor `https://github.com/okikorg/orca-harness` já publica o material de benchmark em `benchmarks/harness-comparison/fixture/` e `tasks.json`:
+
+- `fix-retry-boundary`: altera `src/retry.rs`, bug `attempts_made <= max_attempts`; oracle comportamental deve testar fronteiras com um pequeno teste Rust isolado, não somente grep.
+- `fix-worker-heartbeat`: altera `config/worker.yaml` conforme `docs/workers.md`; oracle independente deve validar parsing/config e invariantes, não somente ocorrência textual.
+- Terceira tarefa: selecionar antes da execução outro defeito de código/config real de repositório publicamente congelado, com teste independente de comportamento, para não inventar um defeito a posteriori. A seleção, o fixture e o oracle deverão ser versionados com hashes antes dos trials. Se não houver terceira tarefa suficientemente comprovada, execute piloto com duas tarefas e registre denominador reduzido sem alegar superioridade.
+
+Passos mandatórios e autorizados:
+1. No Windows, obter donor: `git clone https://github.com/okikorg/orca-harness.git` num diretório isolado, registrar `git rev-parse HEAD`, manter commit fixo durante todo ensaio; `cargo build --release --locked -p orcacode` uma única vez.
+2. Copiar apenas a fixture comprovada e os metadados congelados para diretório próprio de resultados, registrar SHA256. Não depender de arquivos que ainda não estão no checkout de `oigorbrito/core`: são fornecidos pelo donor clonado.
+3. Reutilizar a ideia de isolamento e ordenação do `benchmarks/harness-comparison/run.py`, mas **não o chamar**: ele fixa OpenRouter tanto em Orca como Pi.
+4. Construir caminho local de inferência só por API oficial de cada candidato e provar igualdade de modelo, digest e endpoint. Reusar o preflight 3/3 já aprovado; não alterar oráculos para melhorar métricas. Se caminho Pi/OpenAI-compatível incompatível, relatar o ponto exato e ajustar configuração por contrato público, sem fake tool_calls.
+5. Rodar tarefas de edição reais, não apenas a medição de overhead. Reproduzir e documentar passos de oracle externo após a execução, colecionar usage do backend e tempo monotônico, inclusive falhas.
+6. Publicar os resultados e análise dos três gates ou um bloqueio reproduzível específico. Não prolongar estudo arquitetural, não descartar o donor por ausência inicial no checkout.
+
+Nota de fidelidade: os checks de texto do donor **não bastam** como oracle de correção; é obrigatório teste externo sem depender das declarações do agente.
