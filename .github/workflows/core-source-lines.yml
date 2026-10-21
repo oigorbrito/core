@@ -1,0 +1,33 @@
+name: CORE compare source lines
+on:
+  push:
+    branches: [feat/core-runtime-foundation-001]
+    paths: ['.github/workflows/core-source-lines.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  count-core-lines:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Fetch exact source snapshots
+        run: |
+          git clone --depth=1 https://github.com/okikorg/orca-harness.git orca
+          git clone --depth=1 https://github.com/badlogic/pi-mono.git pi
+          git -C orca rev-parse HEAD
+          git -C pi rev-parse HEAD
+      - name: Count scoped code without generated files
+        run: |
+          python3 -m pip install --user pygount==2.0.0
+          python3 - <<'PY'
+          from pathlib import Path
+          for label, path, suffix in (
+              ('Orca harness-core Rust', Path('orca/crates/harness-core'), '.rs'),
+              ('Pi agent TypeScript', Path('pi/packages/agent'), '.ts'),
+          ):
+              assert path.is_dir(), f'Missing scope: {path}'
+              files = [p for p in path.rglob('*') if p.is_file() and p.suffix == suffix and not any(part in ('node_modules','dist','target','coverage') for part in p.parts)]
+              assert files, f'No source files in {path}'
+              lines = sum(len(p.read_text(encoding='utf-8').splitlines()) for p in files)
+              print(f'{label}: {len(files)} source files, {lines} physical lines (including blanks/comments)')
+          PY
