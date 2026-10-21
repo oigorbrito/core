@@ -23,7 +23,9 @@ export class CoreRuntime {
   }
 
   async run(prompt: string, signal: AbortSignal = new AbortController().signal): Promise<RunResult> {
-    const events = await this.journal.read();
+    let events: readonly Event[];
+    try { events = await this.journal.read(); }
+    catch { return { status: "uncertain", reason: "JOURNAL_READ_FAILED", history: [] }; }
     // A persisted intent without a corresponding outcome is an uncertain side effect.
     const pending = new Set<string>();
     for (const event of events) {
@@ -33,13 +35,17 @@ export class CoreRuntime {
     if (pending.size) return { status: "uncertain", reason: "UNRECONCILED_TOOL_INTENT", history: events };
     if (events.length) return { status: "failed", reason: "SESSION_ALREADY_USED", history: events };
     const add = async (event: Event) => this.journal.append(event);
+    const snapshot = async (): Promise<readonly Event[]> => {
+      try { return await this.journal.read(); } catch { return []; }
+    };
+    const usedIds = new Set<string>();
     const finish = async (status: "failed" | "cancelled", reason: string): Promise<RunResult> => {
       await add({ type: "run_failed", reason });
       return { status, reason, history: await this.journal.read() };
     };
     if (signal.aborted) return { status: "cancelled", reason: "ABORTED", history: events };
-    await add({ type: "run_started", prompt });
     try {
+      await add({ type: "run_started", prompt });
       for (let step = 0; step < this.maxSteps; step++) {
         if (signal.aborted) return finish("cancelled", "ABORTED");
         const reply = await this.model.next({ prompt, history: await this.journal.read(), signal });
@@ -51,14 +57,14 @@ export class CoreRuntime {
         }
         const seen = new Set<string>();
         for (const call of reply.calls) {
-          if (!call.id || seen.has(call.id) || !call.name) return finish("failed", "INVALID_TOOL_CALL");
+          if (!call.id || seen.has(call.id) || usedIds.has(call.id) || !call.name) return finish("failed", "INVALID_TOOL_CALL");
           seen.add(call.id);
+          usedIds.add(call.id);
         }
-        // Journal each intent before any potentially irreversible effect.
-        for (const call of reply.calls) await add({ type: "tool_intent", call });
-        // Execute serially until concurrency policies are independently audited.
+        // Execute serially; write each intent only immediately before its effect.
         for (const call of reply.calls) {
           if (signal.aborted) return { status: "uncertain", reason: "ABORTED_WITH_PENDING_INTENT", history: await this.journal.read() };
+          await add({ type: "tool_intent", call });
           const tool = this.tools.get(call.name);
           let result: ToolResult;
           if (!tool) result = { id: call.id, name: call.name, ok: false, error: "UNKNOWN_TOOL" };
@@ -74,7 +80,7 @@ export class CoreRuntime {
       }
       return finish("failed", "STEP_LIMIT");
     } catch (_err) {
-      return { status: "uncertain", reason: "MODEL_OR_JOURNAL_FAILURE", history: await this.journal.read() };
+      return { status: "uncertain", reason: "MODEL_OR_JOURNAL_FAILURE", history: await snapshot() };
     }
   }
 }
