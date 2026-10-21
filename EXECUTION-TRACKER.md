@@ -86,3 +86,9 @@ Registrar por execução: `milestone`, `commit_sha`, `upstream_sha`, `runtime`, 
 - Auditoria inicial: [CORE-EXTERNAL-BENCH-001](docs/research/CORE-EXTERNAL-BENCH-001.md).
 - Há comparações same-model publicadas e Harness-Bench com harnesses candidatos. **Suspender novos B1/B2** até examinar artefatos brutos, versões e equivalência dos protocolos; evitar duplicar ensaios existentes.
 - Resultados externos são `PUBLICADO_TERCEIRO`, não provas próprias nem benchmark de core isolado; nenhuma pontuação incorporada aos marcos M1–M5.
+
+## CORE-EXTERNAL-AUDIT-002 — inspeção de relatórios externos
+
+- Auditoria: [docs/research/CORE-EXTERNAL-AUDIT-002.md](docs/research/CORE-EXTERNAL-AUDIT-002.md). Arquivos de metodologia/resultados lidos e hashes de **blobs** identificados; nenhum SHA de commit dos benchmarks foi presumido.
+- Evidências mostram alteração de resultados por modelo/tarefa, calibragem de telemetria e restrições de amostra. **Não demonstram vencedor do core**.
+- Ainda pendentes: comparação tarefa↔JSON bruto↔ledger, commit exato e auditoria das superfícies de incorporação. B1/B2 suspensos; M1–M5 em 0/5.
