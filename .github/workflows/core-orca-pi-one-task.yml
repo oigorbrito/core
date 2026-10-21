@@ -1,0 +1,66 @@
+name: CORE paired Orca vs Pi one-task
+on:
+  push:
+    branches: [feat/core-runtime-foundation-001]
+    paths: [.github/workflows/core-orca-pi-one-task.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  paired:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+    steps:
+      - name: Confirm provider secret exists (no calls if absent)
+        shell: bash
+        run: |
+          if [[ -z "${OPENROUTER_API_KEY}" ]]; then
+            echo "::error::OPENROUTER_API_KEY secret is not configured. No model calls executed."
+            exit 2
+          fi
+      - name: Checkout evaluation repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Set up Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Install Pi CLI at pinned npm version
+        run: npm install -g @earendil-works/pi-coding-agent@1.3.0 --ignore-scripts --no-audit --no-fund
+      - name: Fetch and build Orca (record source revision)
+        shell: bash
+        run: |
+          git clone --depth=1 https://github.com/okikorg/orca-harness.git /tmp/orca-harness
+          git -C /tmp/orca-harness rev-parse HEAD | tee /tmp/orca-source-sha.txt
+          cd /tmp/orca-harness
+          cargo build --release --locked -p orcacode
+      - name: Execute exactly one paired edit task
+        shell: bash
+        run: |
+          cd /tmp/orca-harness
+          python3 benchmarks/harness-comparison/run.py \
+            --harness both \
+            --task fix-retry-boundary \
+            --repetitions 1 \
+            --timeout-seconds 45 \
+            --output "${GITHUB_WORKSPACE}/paired-results" \
+            --orca-bin /tmp/orca-harness/target/release/orcacode
+          python3 benchmarks/harness-comparison/analyze.py "${GITHUB_WORKSPACE}/paired-results"
+      - name: Save manifest and audit metadata
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p paired-results
+          { echo "workflow_commit=${GITHUB_SHA}"; echo "test=fix-retry-boundary"; echo "repetitions=1"; echo "harnesses=orca,pi"; echo "pi_npm=@earendil-works/pi-coding-agent@1.3.0"; } > paired-results/metadata.txt
+          if [ -f /tmp/orca-source-sha.txt ]; then cat /tmp/orca-source-sha.txt >> paired-results/metadata.txt; fi
+      - name: Upload paired raw records and summary
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: core-orca-pi-one-task
+          path: paired-results/
+          if-no-files-found: warn
+          retention-days: 30
