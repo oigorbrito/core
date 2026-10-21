@@ -1,0 +1,31 @@
+name: CORE model free loop overhead
+on:
+  push:
+    branches: [feat/core-runtime-foundation-001]
+    paths: ['.github/workflows/core-loop-fake-overhead.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  orca-fake-model:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Clone and pin revision
+        run: |
+          git clone --depth=1 https://github.com/okikorg/orca-harness.git orca
+          git -C orca rev-parse HEAD
+      - name: Run deterministic fake-model kernel tests with timing
+        run: |
+          cd orca
+          cargo test --locked -p orca-harness-core --lib -- --list | tee /tmp/orca-loop-tests.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          names=[s for s in Path('/tmp/orca-loop-tests.txt').read_text().lower().splitlines() if ': test' in s]
+          hits=[s for s in names if any(t in s for t in ('script','mock','model','loop','tool_round'))]
+          print('model/loop fixture tests',len(hits))
+          assert hits,'No fake model behavior tests available'
+          PY
+          /usr/bin/time -f 'elapsed_s=%e max_rss_kb=%M' cargo test --locked -p orca-harness-core --lib -- --test-threads=1
+      - name: Scope
+        run: echo 'Runtime includes test harness and Rust process; not yet a Pi vs Orca normalized loop benchmark'
