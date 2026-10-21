@@ -2,7 +2,10 @@ name: CORE paired speed and context audit
 on:
   push:
     branches: [feat/core-runtime-foundation-001]
-    paths: ['.github/workflows/core-paired-context-audit.yml']
+    paths:
+      - '.github/workflows/core-paired-context-audit.yml'
+      - 'experiments/paired-offline/pi-context-audit.mjs'
+      - 'experiments/paired-offline/orca-context-audit.rs'
   workflow_dispatch:
 permissions:
   contents: read
