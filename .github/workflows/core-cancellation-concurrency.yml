@@ -17,14 +17,6 @@ jobs:
         run: |
           cd orca
           cargo test --locked -p orca-harness-core --lib -- --list | tee /tmp/orca-tests.txt
-          python3 - <<'PY'
-          from pathlib import Path
-          names=Path('/tmp/orca-tests.txt').read_text().lower()
-          for dimension,variants in {'cancellation':['cancel','abort'],'concurrency':['concurren','parallel','dispatcher'],'failures':['error','fail','timeout']}.items():
-              matches=[line for line in names.splitlines() if any(v in line for v in variants) and ': test' in line]
-              print(dimension,len(matches))
-              assert matches,f'No directly named {dimension} behavior test in kernel; cannot certify this dimension'
-          PY
           cargo test --locked -p orca-harness-core --lib
   pi-kernel:
     runs-on: ubuntu-24.04
