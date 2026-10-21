@@ -29,3 +29,20 @@ Esta entrega é pesquisa de código, não ensaio executado; não altera o indica
 ## Pesquisa de referência
 https://arxiv.org/abs/2609.00006 — auditoria de código, não prova causal da melhor arquitetura.
 https://arxiv.org/abs/2609.20804 — ablações de configuração com loop fixo, não compara arquiteturas de loop.
+
+## Retificação obrigatória — Marshall omitido (2026-10-21)
+
+**A triagem nominal de sete projetos era incompleta e não foi derivada dos benchmarks.** Incluir Marshall https://github.com/agentionai/marshall sem eliminar outro candidato e sem declaração de vencedor.
+**Fonte primária:** https://agention.ai/research/three-agents-one-task/ (5 set 2026), com link a código, fixtures e logs; estudo do próprio criador, sem validação independente nesta revisão.
+
+| Cenário de migração de 28 arquivos, 122 testes | Marshall | Pi | OpenCode |
+|---|---|---|---|
+| GPT-5.6 Luna | shell-first 3/3; 32,4s mediana; US$0,0078/run | 4/4; 31,1s; US$0,0353/run | 3/3; 120,5s; custo não registrado |
+| GLM-5.3 Flash | shell-first 2/2; 126,1s; US$0,0099/run | 2/2; 77,7s; US$0,0266/run | 2/2; 118,9s |
+| Qwen3.8 Flash | shell-first 3/3; 146,5s | 0/2; timeout de 420s | 0/2; timeout de 420s |
+
+Em uma ablação interna de Marshall com Luna, o número médio de ferramentas por execução variou de 91 (incremental, n=1) para 5,7 (shell-edit, n=3); a entrada média indicada caiu de 455.372 para 72.296 tokens, aproximadamente 6,3×. **Não é comparação causal limpa de uma única variável entre esses extremos**, e n=1 impede estimar variância no extremo pior. O estudo reporta 105 trials em três modelos e três formatos de tarefa e 15/15 na configuração full belt; grupos individuais têm n pequeno.
+
+**Conclusão autorizada:** Marshall contém mecanismos de montagem do action space, batching, shell-first e controle de leitura/edição com evidência experimental relevante ao CORE; a hipótese deve ser auditada no código antes de reaproveitar. Não afirmar superioridade universal: Pi foi mais rápido em GLM e marginalmente em Luna; resultados são de harness completo, do próprio autor, com risco de seleção de configurações e tarefas.
+
+**Próxima auditoria:** fixar SHA da implementação Marshall, mapear os locais de loop/contexto/registro de ferramentas, recuperar fixtures e logs, classificar o custo para embutir sem fork. A lista passa de sete para oito *até auditoria de cobertura*, sem ranking e sem alterar progresso 0/5.
