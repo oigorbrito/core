@@ -1,0 +1,63 @@
+name: CORE bidirectional capability audit
+on:
+  push:
+    branches: [feat/core-runtime-foundation-001]
+    paths: ['.github/workflows/core-bidirectional-capabilities.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  capability-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Fetch upstream source
+        run: |
+          git clone --depth=1 https://github.com/okikorg/orca-harness.git orca
+          git clone --depth=1 https://github.com/badlogic/pi-mono.git pi
+          git -C orca rev-parse HEAD | tee orca-revision.txt
+          git -C pi rev-parse HEAD | tee pi-revision.txt
+      - name: Audit scoped core feature implementations in both directions
+        run: |
+          python3 - <<'PY'
+          import json,re
+          from pathlib import Path
+          roots={'orca':Path('orca/crates/harness-core'),'pi':Path('pi/packages/agent')}
+          patterns={
+            'steering_and_followup':r'steer(?:ing)?|follow.?up',
+            'context_transform':r'transformContext|context.?transform|compact',
+            'tool_dispatch_and_concurrency':r'dispatch|concurren|parallel|semaphor',
+            'cancellation':r'abort|cancel',
+            'event_observation':r'subscribe|event|emit',
+            'tool_lifecycle':r'tool.?call|tool.?execut',
+            'extension_hooks':r'extension|hook|plugin|middleware',
+            'state':r'agent.?state|session|state',
+          }
+          evidence={}
+          for name,root in roots.items():
+            assert root.is_dir(),root
+            files=[p for p in root.rglob('*') if p.suffix in ('.ts','.rs') and p.is_file()]
+            assert files
+            evidence[name]={}
+            for feature,pattern in patterns.items():
+              matches=[]
+              for path in files:
+                for n,line in enumerate(path.read_text(encoding='utf-8',errors='replace').splitlines(),1):
+                  if re.search(pattern,line,re.I):
+                    matches.append({'file':str(path),'line':n,'text':line.strip()[:180]})
+              evidence[name][feature]={'occurrences':len(matches),'sample':matches[:8],'verdict':'REQUIRES_SEMANTIC_REVIEW'}
+          report={'scope':'core source only; no complete-application comparisons','important':'Keyword evidence is NOT evidence of feature absence or functional equivalence','sources':{'orca':Path('orca-revision.txt').read_text().strip(),'pi':Path('pi-revision.txt').read_text().strip()},'evidence':evidence,'required_followup':'Review public APIs and create paired behavior tests for each proposed donor feature before adoption'}
+          Path('capability-audit.json').write_text(json.dumps(report,indent=2))
+          for feature in patterns:
+            print(feature, 'Pi', evidence['pi'][feature]['occurrences'], 'Orca', evidence['orca'][feature]['occurrences'],'— manual semantics required')
+          PY
+      - name: Upload evidence for review
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: core-bidirectional-capability-audit
+          path: |
+            capability-audit.json
+            pi-revision.txt
+            orca-revision.txt
+          if-no-files-found: warn
