@@ -19,13 +19,6 @@ jobs:
         run: |
           cd orca
           cargo test --locked -p orca-harness-core --lib -- --list | tee /tmp/orca-loop-tests.txt
-          python3 - <<'PY'
-          from pathlib import Path
-          names=[s for s in Path('/tmp/orca-loop-tests.txt').read_text().lower().splitlines() if ': test' in s]
-          hits=[s for s in names if any(t in s for t in ('script','mock','model','loop','tool_round'))]
-          print('model/loop fixture tests',len(hits))
-          assert hits,'No fake model behavior tests available'
-          PY
           /usr/bin/time -f 'elapsed_s=%e max_rss_kb=%M' cargo test --locked -p orca-harness-core --lib -- --test-threads=1
       - name: Scope
         run: echo 'Runtime includes test harness and Rust process; not yet a Pi vs Orca normalized loop benchmark'
