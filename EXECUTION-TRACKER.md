@@ -67,3 +67,9 @@ Registrar por execução: `milestone`, `commit_sha`, `upstream_sha`, `runtime`, 
 - No ambiente local desta sessão foi executada uma versão de referência equivalente com **10/10 testes unitários aprovados**; a versão publicada no GitHub **não foi executada em CI/Windows** e exige validação independente. Não reivindicar PASS remoto.
 - Estes são testes determinísticos de comportamento, **não** benchmark entre engines nem comprovação científica de superioridade. Não selecionam linguagem, donor, nem provam persistência, sandbox, recuperação ou tarefas reais.
 - Aceitação do produto permanece **0/5**; nenhuma PR ou merge criado por este registro.
+
+## Esqueleto de host independente de donor — 2026-10-21
+
+- Novo: [skeleton/README.md](skeleton/README.md), [contracts.mjs](skeleton/contracts.mjs), [host.mjs](skeleton/host.mjs), adaptadores de referência e journal em memória, seis testes em [skeleton/test/skeleton.test.mjs](skeleton/test/skeleton.test.mjs).
+- Trata-se de **contrato de integração preliminar** com adaptador para referência simulada, não de substituição ou escolha de um motor upstream. Falta executar os seis testes na instalação do usuário/CI; **não declarar PASS** antes disso.
+- O journal não é persistente; nenhuma garantia de sandbox, recuperação, multiagente ou benchmarks entre donors. Sem modificações em `main`, sem PR ou merge adicional. M1–M5 continuam **0/5 aceitos**.
