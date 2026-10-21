@@ -60,3 +60,10 @@ Registrar por execução: `milestone`, `commit_sha`, `upstream_sha`, `runtime`, 
 - [Catálogo dos 7 subsistemas, 29 padrões e cinco donors clonáveis](docs/research/core-donors-29-pattern-coverage.md).
 - [Inventário primário dos 29 padrões](docs/research/harness-study-29-patterns.md).
 - **Pesquisa documentada não constitui M1–M5 aceito**; manter a linha de base funcional 0/5 e não interpretar candidatos como padrões verificados.
+
+## Referência neutra de contrato — 2026-10-21
+
+- Código: [`reference/core.mjs`](reference/core.mjs); testes: [`reference/test/core.test.mjs`](reference/test/core.test.mjs); limites: [`reference/README.md`](reference/README.md).
+- No ambiente local desta sessão foi executada uma versão de referência equivalente com **10/10 testes unitários aprovados**; a versão publicada no GitHub **não foi executada em CI/Windows** e exige validação independente. Não reivindicar PASS remoto.
+- Estes são testes determinísticos de comportamento, **não** benchmark entre engines nem comprovação científica de superioridade. Não selecionam linguagem, donor, nem provam persistência, sandbox, recuperação ou tarefas reais.
+- Aceitação do produto permanece **0/5**; nenhuma PR ou merge criado por este registro.
