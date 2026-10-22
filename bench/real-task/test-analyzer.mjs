@@ -7,7 +7,7 @@ import {spawnSync} from 'node:child_process';
 const analyzer = path.resolve('bench/real-task/analyze.mjs');
 const root = fs.mkdtempSync(path.join(os.tmpdir(),'core-real-test-'));
 function row(harness, overrides={}) {
-  return {task_id:'fixed-retry',trial_id:'01',harness,model_digest:digest,fixture_sha256:'fixture-fixed',oracle_sha256:'oracle-fixed',endpoint:'http://127.0.0.1:11434',status:'completed',oracle_correct:true,wall_ms:harness==='pi'?100:90,usage:{prompt_tokens:100,completion_tokens:10},...overrides};
+  return {task_id:'fixed-retry',trial_id:'1',harness,model_digest:digest,fixture_sha256:'fixture-fixed',oracle_sha256:'oracle-fixed',endpoint:'http://127.0.0.1:11434',status:'completed',oracle_correct:true,wall_ms:harness==='pi'?100:90,usage:{prompt_tokens:100,completion_tokens:10},...overrides};
 }
 const digest='a'.repeat(64);
 const parityBase={task_id:'fixed-retry',repeat:1,model_id:'test-model',model_digest:digest,context_tokens:4096,output_tokens_limit:2048,temperature:0,thinking:'off',tool_schema_sha256:digest,system_prompt_sha256:digest,step_limit:12,deadline_ms:120000,transport:'ollama',oracle_id:'test-oracle',oracle_version:'1',tool_choice:'auto',exit_status:'completed',oracle_pass:true,usage:{input:100,output:10}};
