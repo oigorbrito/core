@@ -1,0 +1,21 @@
+name: CORE efficacy parity audit
+on:
+  push:
+    branches: [feat/core-runtime-foundation-001]
+    paths:
+      - 'bench/real-task/audit-parity.mjs'
+      - 'bench/real-task/test-audit-parity.mjs'
+      - '.github/workflows/core-efficacy-parity.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: node --test bench/real-task/test-audit-parity.mjs
