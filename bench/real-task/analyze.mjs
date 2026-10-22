@@ -2,12 +2,15 @@
 // CORE-BENCH-REAL-001: independent post-run analysis. No model calls.
 import fs from 'node:fs';
 import path from 'node:path';
+import {verifyDirectory} from './verify-efficacy-bundle.mjs';
 const [gate, dir] = process.argv.slice(2);
 if (!['consumption','speed','efficacy'].includes(gate) || !dir) {
   console.error('Usage: node bench/real-task/analyze.mjs <consumption|speed|efficacy> <results-dir>');
   process.exit(2);
 }
-const files = fs.readdirSync(dir).filter(f => f.endsWith('.json') && f !== 'manifest.json').sort();
+const parity = verifyDirectory(dir);
+if (!parity.eligible) throw Error(`Ineligible efficacy comparison: ${parity.reason}; ${parity.diagnostics.join('; ')}`);
+const files = fs.readdirSync(dir).filter(f => f.endsWith('.json') && !['manifest.json','parity-metadata.json'].includes(f)).sort();
 if (!files.length) throw Error('No trial JSON; refuse empty PASS');
 const records = files.map(f => {
   const r = JSON.parse(fs.readFileSync(path.join(dir,f),'utf8'));
