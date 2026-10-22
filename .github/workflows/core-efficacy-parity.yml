@@ -5,6 +5,8 @@ on:
     paths:
       - 'bench/real-task/audit-parity.mjs'
       - 'bench/real-task/test-audit-parity.mjs'
+      - 'bench/real-task/verify-efficacy-bundle.mjs'
+      - 'bench/real-task/test-verify-efficacy-bundle.mjs'
       - '.github/workflows/core-efficacy-parity.yml'
   workflow_dispatch:
 permissions:
@@ -18,4 +20,4 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
-      - run: node --test bench/real-task/test-audit-parity.mjs
+      - run: node --test bench/real-task/test-audit-parity.mjs bench/real-task/test-verify-efficacy-bundle.mjs
