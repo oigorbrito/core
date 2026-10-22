@@ -44,6 +44,18 @@ export function verifyDirectory(dir){
  if(fromMeta.size!==meta.trials?.length)diagnostics.push('Duplicate task/repeat/core in metadata');
  for(const id of fromRunner)if(!fromMeta.has(id))diagnostics.push(`metadata missing source ${id}`);
  for(const id of fromMeta)if(!fromRunner.has(id))diagnostics.push(`source missing metadata ${id}`);
+ // Metadata must also agree with the observed trial, not only its opposite core.
+ const metaByKey=new Map((meta.trials||[]).map(t=>[JSON.stringify([t.task_id,String(t.repeat),t.core]),t]));
+ for(const r of rows){
+  const key=JSON.stringify([r.task_id,String(r.trial_id),r.harness]);
+  const m=metaByKey.get(key);
+  if(!m)continue;
+  if(m.model_digest!==r.model_digest)diagnostics.push(`${key}: metadata model_digest disagrees with trial`);
+  if(m.oracle_pass!==r.oracle_correct)diagnostics.push(`${key}: metadata oracle_pass disagrees with trial`);
+  if(m.exit_status!==r.status)diagnostics.push(`${key}: metadata exit_status disagrees with trial`);
+  if(r.usage&&m.usage&&(m.usage.input!==r.usage.prompt_tokens||m.usage.output!==r.usage.completion_tokens))diagnostics.push(`${key}: metadata usage disagrees with trial`);
+ }
+
  return {eligible:diagnostics.length===0,reason:diagnostics.length?'INVALID_OR_NON_EQUIVALENT':'ELIGIBLE_PAIRED',trials:rows.length,pairs:groups.size,diagnostics};
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===path.resolve(new URL(import.meta.url).pathname)){
