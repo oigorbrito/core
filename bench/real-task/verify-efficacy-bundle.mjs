@@ -56,7 +56,7 @@ export function verifyDirectory(dir){
   if(r.usage&&m.usage&&(m.usage.input!==r.usage.prompt_tokens||m.usage.output!==r.usage.completion_tokens))diagnostics.push(`${key}: metadata usage disagrees with trial`);
  }
 
- return {eligible:diagnostics.length===0,reason:diagnostics.length?'INVALID_OR_NON_EQUIVALENT':'ELIGIBLE_PAIRED',trials:rows.length,pairs:groups.size,diagnostics};
+ return {eligible:diagnostics.length===0,comparison_mode:parity.comparison_mode,native_differences_by_pair:parity.pairs.filter(p=>p.native_differences?.length).map(p=>({task_id:p.task_id,repeat:p.repeat,fields:p.native_differences})),reason:diagnostics.length?'INVALID_OR_NON_EQUIVALENT':'ELIGIBLE_PAIRED',trials:rows.length,pairs:groups.size,diagnostics};
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===path.resolve(new URL(import.meta.url).pathname)){
  if(process.argv.length!==3){console.error('Usage: node bench/real-task/verify-efficacy-bundle.mjs <results-dir>');process.exit(2)}
