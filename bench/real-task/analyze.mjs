@@ -55,7 +55,7 @@ for (const h of ['pi','orca']) {
   };
 }
 const verdict = 'PILOT_INCONCLUSIVE'; // Never turn this pilot into a winner claim.
-const report = {schema_version:1,protocol:'CORE-BENCH-REAL-001',gate,paired_trials:pairs.size,verdict};
+const report = {schema_version:1,protocol:'CORE-BENCH-REAL-001',gate,paired_trials:pairs.size,comparison_mode:parity.comparison_mode,native_differences_by_pair:parity.native_differences_by_pair,verdict};
 if (gate === 'efficacy') {
   report.metrics = Object.fromEntries(Object.entries(aggregate).map(([h,a]) => [h,{attempted:a.attempted,correct:a.correct,success_rate:a.success_rate}]));
 } else if (gate === 'speed') {
