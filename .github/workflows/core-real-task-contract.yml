@@ -14,7 +14,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - run: python3 -m pip install psutil==6.1.1\n      - run: cd bench/real-task && python3 -m unittest -v test_preflight.py test_select_swebench.py test_qualify_swebench.py test_launch_once.py
+      - run: python3 -m pip install psutil==6.1.1
+      - run: cd bench/real-task && python3 -m unittest -v test_preflight.py test_select_swebench.py test_qualify_swebench.py test_launch_once.py
   consumption-contract:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
