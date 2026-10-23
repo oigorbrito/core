@@ -34,15 +34,52 @@ def sample_host(samples=12, interval=1, max_cpu=55, min_available_gb=3):
     return {"readings":readings,"mean_cpu":mean,"max_cpu":peak,"min_available_bytes":floor,
             "eligible":mean<=max_cpu and peak<=max_cpu*1.4 and floor>=int(min_available_gb*1024**3)}
 
+def stop_process_tree(process, grace_seconds=3):
+    """Stop descendants and direct child, then reap the owned direct child."""
+    import psutil
+    try:
+        parent=psutil.Process(process.pid)
+        descendants=parent.children(recursive=True)
+    except psutil.NoSuchProcess:
+        descendants=[]
+    for child in descendants:
+        try:
+            child.terminate()
+        except psutil.NoSuchProcess:
+            pass
+    try:
+        process.terminate()
+    except ProcessLookupError:
+        pass
+    try:
+        process.wait(timeout=grace_seconds)
+    except subprocess.TimeoutExpired:
+        try:
+            process.kill()
+        except ProcessLookupError:
+            pass
+        process.wait()
+    alive=psutil.wait_procs(descendants,timeout=grace_seconds)[1]
+    for child in alive:
+        try:
+            child.kill()
+        except psutil.NoSuchProcess:
+            pass
+    psutil.wait_procs(alive,timeout=grace_seconds)
+    return {"descendant_count":len(descendants),"descendants_remaining":[p.pid for p in alive if p.is_running()]}
+
 def run_one(command, cwd, timeout, logfile):
     start=time.monotonic_ns()
     with open(logfile,"w",encoding="utf-8") as stream:
+        # New process group/session prevents ordinary shell signals from hitting the runner.
+        kwargs={"creationflags":subprocess.CREATE_NEW_PROCESS_GROUP} if os.name=="nt" else {"start_new_session":True}
+        process=subprocess.Popen(command,cwd=cwd,stdout=stream,stderr=subprocess.STDOUT,shell=False,**kwargs)
         try:
-            completed=subprocess.run(command,cwd=cwd,stdout=stream,stderr=subprocess.STDOUT,
-                                     timeout=timeout,check=False,shell=False)
-            return {"status":"FINISHED","exit_code":completed.returncode,"wall_ms":(time.monotonic_ns()-start)/1e6}
+            code=process.wait(timeout=timeout)
+            return {"status":"FINISHED","exit_code":code,"wall_ms":(time.monotonic_ns()-start)/1e6}
         except subprocess.TimeoutExpired:
-            return {"status":"TIMEOUT","exit_code":None,"wall_ms":(time.monotonic_ns()-start)/1e6}
+            cleanup=stop_process_tree(process)
+            return {"status":"TIMEOUT","exit_code":None,"wall_ms":(time.monotonic_ns()-start)/1e6,"cleanup":cleanup}
 
 def main(argv=None):
     p=argparse.ArgumentParser(description="Single controlled attempt; never repeats automatically")
@@ -54,7 +91,6 @@ def main(argv=None):
     p.add_argument("--max-cpu",type=float,default=55)
     p.add_argument("--min-available-gb",type=float,default=3)
     p.add_argument("--allow-loaded-model",action="store_true",help="Only if the model is loaded but provably idle; does not override CPU/memory gate")
-    p.add_argument("--",dest="unused",nargs="?")
     args,command=p.parse_known_args(argv)
     if command[:1]==["--"]:command=command[1:]
     if not command:p.error("Provide existing trial runner command after --")
