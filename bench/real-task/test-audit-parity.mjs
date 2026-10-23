@@ -9,3 +9,8 @@ test('different generation cap invalidates',()=>{const r=audit({trials:[trial('p
 test('rejects missing cells and duplicate rows',()=>{assert.equal(audit({trials:[trial('pi')]}).eligible,false);assert.equal(audit({trials:[trial('pi'),trial('pi'),trial('orca')]}).eligible,false)});
 test('rejects unknown usage and invalid hashes',()=>{const r=audit({trials:[trial('pi',{usage:null}),trial('orca',{model_digest:'invalid'})]});assert.equal(r.eligible,false)});
 test('rejects empty payload',()=>assert.equal(audit({}).eligible,false));
+
+test('native-agent comparison preserves native prompts, schemas and step caps',()=>{const r=audit({comparison_mode:'native_agent',trials:[trial('pi'),trial('orca',{step_limit:10,system_prompt_sha256:sha2,tool_schema_sha256:sha2,thinking:'low',transport:'ollama-native'})]});assert.equal(r.eligible,true);assert.deepEqual(r.pairs[0].native_differences,['thinking','tool_schema_sha256','system_prompt_sha256','step_limit','transport'])});
+test('native-agent still rejects different actual output budgets',()=>{const r=audit({comparison_mode:'native_agent',trials:[trial('pi'),trial('orca',{output_tokens_limit:1})]});assert.equal(r.eligible,false)});
+test('native-agent still rejects different model and oracle',()=>{const r=audit({comparison_mode:'native_agent',trials:[trial('pi'),trial('orca',{oracle_version:'other',model_id:'other'})]});assert.equal(r.eligible,false)});
+test('unknown comparison mode fails closed',()=>{assert.equal(audit({comparison_mode:'unknown',trials:[trial('pi'),trial('orca')]}).eligible,false)});
