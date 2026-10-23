@@ -39,4 +39,14 @@ class LaunchOnceTests(unittest.TestCase):
                 rc=mod.main(["--results-dir",str(root/"results"),"--cwd",str(root),"--",sys.executable,"-c","import sys;sys.exit(7)"])
             self.assertEqual(rc,4);self.assertEqual(json.loads((root/"results/admission.json").read_text())["exit_code"],7)
 
+    def test_timeout_reaps_direct_runner(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=pathlib.Path(d)
+            with patch.object(mod,"ollama_running",return_value=[]),patch.object(mod,"sample_host",return_value={"eligible":True}):
+                rc=mod.main(["--results-dir",str(root/"results"),"--cwd",str(root),"--timeout","1","--",sys.executable,"-c","import time;time.sleep(30)"])
+            self.assertEqual(rc,4)
+            state=json.loads((root/"results/admission.json").read_text())
+            self.assertEqual(state["status"],"TIMEOUT")
+            self.assertIn("cleanup",state)
+
 if __name__=="__main__":unittest.main()
