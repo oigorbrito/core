@@ -9,10 +9,14 @@
  */
 import {readFileSync} from 'node:fs';
 const REQUIRED=['task_id','repeat','model_id','model_digest','context_tokens','output_tokens_limit','temperature','thinking','tool_schema_sha256','system_prompt_sha256','step_limit','deadline_ms','transport','oracle_id','oracle_version','tool_choice'];
+const NATIVE_FIELDS=['thinking','tool_schema_sha256','system_prompt_sha256','step_limit','transport','tool_choice'];
+const SHARED_FIELDS=REQUIRED.filter(k=>!NATIVE_FIELDS.includes(k));
 const numeric=['context_tokens','output_tokens_limit','temperature','step_limit','deadline_ms'];
 const goodSha=v=>typeof v==='string'&&/^[0-9a-f]{64}$/i.test(v);
 export function audit(doc){
  const errors=[],groups=new Map();
+ const mode=doc?.comparison_mode??'isolated_core';
+ if(!['isolated_core','native_agent'].includes(mode))errors.push('invalid comparison_mode');
  if(!doc||!Array.isArray(doc.trials))return {eligible:false,errors:['missing trials array'],pairs:[]};
  for(const [i,t] of doc.trials.entries()){
   if(!t||typeof t!=='object'){errors.push(`trial ${i}: not object`);continue}
@@ -31,14 +35,15 @@ export function audit(doc){
  for(const g of groups.values()){
   if(g.pi.length!==1||g.orca.length!==1){errors.push(`pair ${g.key}: requires exactly one pi and one orca (found ${g.pi.length}/${g.orca.length})`);continue}
   const a=g.pi[0],b=g.orca[0],mismatches=[];
-  for(const k of REQUIRED)if(JSON.stringify(a[k])!==JSON.stringify(b[k]))mismatches.push(k);
+  for(const k of (mode==='native_agent'?SHARED_FIELDS:REQUIRED))if(JSON.stringify(a[k])!==JSON.stringify(b[k]))mismatches.push(k);
+  const native_differences=NATIVE_FIELDS.filter(k=>JSON.stringify(a[k])!==JSON.stringify(b[k]));
   if(mismatches.length)errors.push(`pair ${g.key}: mismatch ${mismatches.join(',')}`);
-  pairs.push({task_id:a.task_id,repeat:a.repeat,parity_ok:mismatches.length===0,mismatches,
+  pairs.push({task_id:a.task_id,repeat:a.repeat,parity_ok:mismatches.length===0,mismatches,native_differences,
    pi_correct:a.oracle_pass,orca_correct:b.oracle_pass,
    pi_total_tokens:a.usage?.input+a.usage?.output,
    orca_total_tokens:b.usage?.input+b.usage?.output})
  }
- return {schema_version:1,eligible:errors.length===0,pair_count:pairs.length,errors,pairs};
+ return {schema_version:1,comparison_mode:mode,eligible:errors.length===0,pair_count:pairs.length,errors,pairs};
 }
 if(process.argv[1]&&import.meta.url===new URL('file://'+process.argv[1]).href){
  if(process.argv.length!==3){console.error('Usage: node bench/real-task/audit-parity.mjs trials.json');process.exit(2)}
